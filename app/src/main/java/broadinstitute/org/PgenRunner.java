@@ -8,6 +8,7 @@ import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.pgen.PgenWriter;
 
 import java.io.File;
+import java.util.EnumSet;
 
 public class PgenRunner {
     public static void main(String[] args) {
@@ -17,9 +18,12 @@ public class PgenRunner {
                         new HtsPath("temp.pgen"),
                         reader.getFileHeader(),
                         PgenWriter.PgenWriteMode.PGEN_FILE_MODE_WRITE_SEPARATE_INDEX,
+                        EnumSet.noneOf(PgenWriter.PgenWriteFlag.class),
+                        PgenWriter.PgenChromosomeCode.PLINK_CHROMOSOME_CODE_MT,
+                        false,
                         PgenWriter.VARIANT_COUNT_UNKNOWN,
-                        PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES)) {
-
+                        PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES,
+                        null)) {
                     reader.forEach(vc -> pgenWriter.add(vc));
                 }
             }

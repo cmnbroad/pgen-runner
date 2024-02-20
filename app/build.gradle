@@ -26,13 +26,12 @@ dependencies {
     // Use TestNG framework, also requires calling test.useTestNG() below
     testImplementation 'org.testng:testng:7.5'
 
+    implementation 'pgen-jni:pgenlib:0.2.8b-SNAPSHOT'
+    implementation 'com.github.luben:zstd-jni:1.5.5-5'
     // This dependency is used by the application.
     implementation 'com.google.guava:guava:31.1-jre'
 
     implementation 'com.github.samtools:htsjdk:3.0.0'
-
-    implementation 'pgen-jni:pgenlib:0.1.2l-SNAPSHOT'
-    //implementation 'pgen-jni:pgenlib:0.1.1m-SNAPSHOT'
 
     implementation 'org.apache.commons:commons-lang3:3.5'
     implementation 'commons-io:commons-io:2.5'

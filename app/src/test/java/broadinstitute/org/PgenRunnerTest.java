@@ -4,29 +4,82 @@
 package broadinstitute.org;
 
 import htsjdk.io.HtsPath;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.writer.Options;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.pgen.PgenWriter;
 import org.testng.annotations.*;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Random;
 
 public class PgenRunnerTest {
     @Test
-    public void testPgenWriter() {
+    public void createPhaseTest() {
+        final HtsPath inputPath = new HtsPath("/Users/cnorman/projects/pgen-jni/pgen/testdata/0000000000-my_demo_filters.vcf.gz");
+        final HtsPath outputPath = new HtsPath("/Users/cnorman/projects/pgen-jni/pgen/testdata/0000000000-my_demo_filters.partiallyphased.vcf.gz");
+        try (final VCFFileReader vcfReader = new VCFFileReader(inputPath.toPath(), false);
+             final CloseableIterator<VariantContext> vcfIt = vcfReader.iterator();
+             final VariantContextWriter vcfWriter =
+                    new VariantContextWriterBuilder()
+                            .setOutputFile(outputPath.toPath().toString())
+                            .unsetOption(Options.INDEX_ON_THE_FLY)
+                            .build()) {
+            vcfWriter.writeHeader(vcfReader.getFileHeader());
 
+            final Random randomGenerator = new Random(47382911L);
+            while (vcfIt.hasNext()) {
+                final VariantContext vc = vcfIt.next();
+                final VariantContextBuilder vcb = new VariantContextBuilder(vc);
+                final List<Genotype> gtList = new ArrayList<>(vc.getGenotypes().size());
+                final GenotypesContext gc = vcb.getGenotypes();
+                for (Genotype g : gc.iterateInSampleNameOrder()) {
+                    if (g.isCalled() && !g.isHom()) {
+                        //if (randomGenerator.nextBoolean() == true) {
+                            final GenotypeBuilder gtb = new GenotypeBuilder().copy(g);
+                            gtb.phased(true);
+                            final Genotype gp = gtb.make();
+                            gtList.add(gp);
+//                            System.out.println(String.format("Phasing: %s to %s", g, gp));
+//                        } else {
+//                            gtList.add(g);
+//                        }
+                    } else {
+                        gtList.add(g);
+                    }
+                }
+                vcb.genotypes(gtList);
+                final VariantContext modifiedContext = vcb.make();
+                if (modifiedContext.getGenotypes().size() != gtList.size()) {
+                    throw new IllegalStateException();
+                }
+                vcfWriter.add(modifiedContext);
+            }
+        }
+    }
+    @Test
+    public void testPgenWriter() {
         try (final VCFFileReader reader = new VCFFileReader(new File("src/test/resources/CEUtrioTest.vcf"), false)) {
             try (final PgenWriter pgenWriter = new PgenWriter(
                     new HtsPath("temp.pgen"),
                     reader.getFileHeader(),
                     PgenWriter.PgenWriteMode.PGEN_FILE_MODE_WRITE_SEPARATE_INDEX,
+                    EnumSet.noneOf(PgenWriter.PgenWriteFlag.class),
+                    PgenWriter.PgenChromosomeCode.PLINK_CHROMOSOME_CODE_MT,
+                    false,
                     PgenWriter.VARIANT_COUNT_UNKNOWN,
-                    PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES)) {
-
+                    PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES,
+                    null)) {
                 reader.forEach(vc -> pgenWriter.add(vc));
             }
         }
     }
-
     @Test
     public void testNativeUtils() {
         // otherwise, load it from a jar file on the classpath
